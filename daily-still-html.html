@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no"/>
+  <meta name="description" content="Daily Still — A community devotional app aligned with the NIV Bible"/>
+  <meta name="theme-color" content="#F4EFE6"/>
+  <meta name="mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="default"/>
+  <meta name="apple-mobile-web-app-title" content="Daily Still"/>
+  <title>Daily Still</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,600&family=Inter:wght@300;400;500;600&display=swap"/>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: #F4EFE6; -webkit-font-smoothing: antialiased; }
+    #root { min-height: 100%; }
+    input, textarea, button { font-family: inherit; }
+    ::-webkit-scrollbar { width: 0; height: 0; }
+    textarea { -webkit-overflow-scrolling: touch; }
+  </style>
+</head>
+<body>
+<div id="root"></div>
+
+<script type="text/babel">
+/* ══════════════════════════════════════════════════════════════════════════
+   DAILY STILL — Community Devotional App  |  index.html
+   ──────────────────────────────────────────────────────────────────────────
+   GITHUB PAGES SETUP:
+   1. Save this file as  index.html  in your repository root
+   2. Go to Settings → Pages → Source → Deploy from branch → main / root
+   3. Your app will be live at:  https://your-username.github.io/repo-name/
+
+   COMMUNITY AI FEATURE:
+   Option A — Direct API (for private/personal use only):
+     Set ANTHROPIC_API_KEY below with your "sk-ant-..." key.
+     ⚠️  DO NOT commit a live API key to a public repo.
+
+   Option B — Cloudflare Worker Proxy (recommended for public apps):
+     Deploy a Worker that forwards requests to Anthropic.
+     Set PROXY_URL to your Worker's URL instead.
+     Leave ANTHROPIC_API_KEY empty.
+
+   If both are empty, the community tab shows curated fallback posts.
+══════════════════════════════════════════════════════════════════════════ */
+
+const CONFIG = {
+  ANTHROPIC_API_KEY: "",   // "sk-ant-..." — for personal/private use only
+  PROXY_URL:         "",   // "https://your-worker.workers.dev" — for public apps
+  SUNDAY_AUDIO_URL:  "",   // URL to your weekly MP3 (Google Drive direct link, etc.)
+};
+
+const { useState, useEffect, useRef } = React;
+
+// ── Palette ─────────────────────────────────────────────────────────────────
+const C = {
+  bg:"#F4EFE6", card:"#FEFCF8", text:"#1C1917", sub:"#5A5147",
+  muted:"#A89E93", accent:"#6B8F71", aLight:"#EAF1EB",
+  border:"#E0D6CA", warm:"#AE9080", sun:"#A67850", sunBg:"#FBF2E8",
+};
+
+const AUDIO_SRC = CONFIG.SUNDAY_AUDIO_URL || "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3";
+
+// ── Devotions (27 total — cycles daily) ─────────────────────────────────────
+const DEVS = [
+  { ref:"Psalm 46:10", theme:"Stillness", title:"The Gift of Stillness",
+    verse:"Be still, and know that I am God; I will be exalted among the nations, I will be exalted in the earth.",
+    body:["In a world that never stops moving, God's invitation to 'be still' feels almost countercultural. Yet it is precisely in the quiet that we hear Him most clearly. Stillness is not passive resignation — it is an active turning of our hearts toward the One who holds all things together.","Today, before the day's demands crowd in, pause. Take three slow breaths. God is not waiting for you to have everything figured out — He meets you right here, in this breath, in this stillness.","'I will be exalted in the earth.' No matter the chaos around us, God's purposes will prevail. Our job is not to hold everything together — it is simply to know Him."],
+    prayer:"Lord, teach me to be still. Quiet the noise and draw me close to You today. Amen." },
+  { ref:"Lamentations 3:22-23", theme:"Mercy", title:"New Every Morning",
+    verse:"Because of the Lord's great love we are not consumed, for his compassions never fail. They are new every morning; great is your faithfulness.",
+    body:["Yesterday's failures do not define today. God's mercy is not dispensed once and withdrawn — it is renewed fresh every morning like dew on the grass. No matter what you carried to bed last night, this morning holds a clean slate.","Jeremiah wrote these words in the middle of profound grief and national disaster. This is not easy optimism — it is hard-won hope from someone who has suffered deeply and found God faithful still.","Great is His faithfulness. Not occasional. Not conditional. Great — and enduring."],
+    prayer:"Thank You, Father, for mercies new this morning. Help me receive Your grace fresh today. Amen." },
+  { ref:"Philippians 4:6-7", theme:"Peace", title:"The Peace That Guards",
+    verse:"Do not be anxious about anything, but in every situation, by prayer and petition, with thanksgiving, present your requests to God. And the peace of God, which transcends all understanding, will guard your hearts and your minds in Christ Jesus.",
+    body:["Anxiety narrows our vision until all we can see is the problem. But Paul, writing from prison, offers a different way: prayer as a reorientation of our hearts toward the One who is bigger than our fears.","The promise is not 'pray and your problems will disappear.' It is 'pray, and the peace of God will guard your heart.' The peace comes before the resolution — in the middle of uncertainty.","Bring your worries to God today. All of them. He is not overwhelmed by what overwhelms you."],
+    prayer:"God, I lay my anxieties before You. Replace them with the peace only You can give. Guard my heart today. Amen." },
+  { ref:"Isaiah 40:31", theme:"Strength", title:"Renewed Strength",
+    verse:"But those who hope in the Lord will renew their strength. They will soar on wings like eagles; they will run and not grow weary, they will walk and not be faint.",
+    body:["There are seasons when we feel utterly spent — when even small tasks feel like mountains. Isaiah wrote to a people in exile, exhausted and wondering if God had forgotten them.","The promise is not that you will never grow tired. It is that those who wait on God will find their strength renewed — like an eagle riding thermal currents rather than flapping frantically.","Are you striving in your own strength today? Open your hands. Let God carry what you were never meant to carry alone."],
+    prayer:"Lord, I am weary. I receive Your strength today. Lift me on Your currents. Amen." },
+  { ref:"Romans 8:28", theme:"Providence", title:"All Things",
+    verse:"And we know that in all things God works for the good of those who love him, who have been called according to his purpose.",
+    body:["'All things.' Not some things. Not the easy things — but also the painful chapters, the doors that closed, the plans that fell apart, and the losses that left a mark.","This is not a promise that life will always feel good. It is a promise that God is always working. Behind every situation, there is a Craftsman weaving purpose from pain, beauty from ashes.","You may not see the pattern from where you stand. That's okay. Trust the Weaver."],
+    prayer:"Father, I trust You are working in this chapter, even when I cannot see it. Hold me in Your purpose. Amen." },
+  { ref:"Matthew 11:28-30", theme:"Rest", title:"Come As You Are",
+    verse:"Come to me, all you who are weary and burdened, and I will give you rest. Take my yoke upon you and learn from me, for I am gentle and humble in heart, and you will find rest for your souls.",
+    body:["Jesus does not say 'come to me when you have it together.' He says 'come to me, all you who are weary.' The invitation is wide open — addressed specifically to those who are struggling. You don't have to clean yourself up first.","A yoke connected two oxen to share a load. Jesus invites us into His yoke — walking beside Him, not pulling alone. His yoke is easy not because life becomes effortless, but because the One on the other end is infinitely strong and infinitely gentle.","Rest for your soul — the deep rest that comes from no longer having to hold everything together by yourself."],
+    prayer:"Jesus, I come to You weary. I take Your yoke today. Teach me to walk in step with You. Amen." },
+  { ref:"Proverbs 3:5-6", theme:"Trust", title:"Lean Not",
+    verse:"Trust in the Lord with all your heart and lean not on your own understanding; in all your ways submit to him, and he will make your paths straight.",
+    body:["Our own understanding is a limited thing. We see one frame of a very long film. Yet how often we grip our plans tightly, as if the outcome depends entirely on our own wisdom and effort.","'Lean not' is a gentle instruction — not 'abandon your mind,' but don't put your full weight on your own perspective. God's understanding is infinite. His vantage point is eternal.","The paths He straightens may not look like the ones we would have chosen. But they lead where He intends."],
+    prayer:"Lord, I release my grip on my plans today. I trust Your wisdom over my own. Make my paths straight. Amen." },
+  { ref:"John 15:5", theme:"Abiding", title:"Stay Connected",
+    verse:"I am the vine; you are the branches. If you remain in me and I in you, you will bear much fruit; apart from me you can do nothing.",
+    body:["A branch disconnected from the vine does not slowly fade — it dies quickly. It has no independent life source. Jesus uses this image intentionally: connection to Him is essential for any spiritual life at all.","Remaining in Him is not complicated, but it is constant. It is choosing Him first in the morning. It is returning to Him in the middle of a difficult day. It is the ongoing, everyday posture of dependency.","The fruit is not something we manufacture. It grows naturally from the connection. Stay connected."],
+    prayer:"Jesus, help me remain in You today — in every moment, every decision. I cannot thrive apart from You. Amen." },
+  { ref:"2 Corinthians 12:9", theme:"Grace", title:"Sufficient Grace",
+    verse:"But he said to me, 'My grace is sufficient for you, for my power is made perfect in weakness.' Therefore I will boast all the more gladly about my weaknesses, so that Christ's power may rest on me.",
+    body:["Paul prayed three times for his thorn to be removed. God said no — but He said something greater: My grace is sufficient. Not 'you'll get stronger.' Not 'it will get easier.' But: I am enough.","In our weakness-averse culture, this is radical. We hide our weaknesses, minimize them, work around them. But God says: bring them here. It is precisely in our emptiness that His fullness becomes visible.","Your weakness is not a disqualifier. It is an invitation."],
+    prayer:"Lord, where I am weak, let Your power be made perfect. I stop hiding my need. Amen." },
+  { ref:"Jeremiah 29:11", theme:"Hope", title:"Plans and a Future",
+    verse:"For I know the plans I have for you, declares the Lord, plans to prosper you and not to harm you, plans to give you hope and a future.",
+    body:["God spoke these words to people in exile — people who had lost their homes, their temple, and their sense of future. And into that darkness He said: I know the plans I have for you. Plans for good. Plans for hope.","This is not a promise of an immediately comfortable life. The Israelites would remain in Babylon for 70 years. But even there, God had not abandoned His purpose for them.","Whatever exile you find yourself in today — God has not forgotten you. He knows the plans."],
+    prayer:"Father, I trust in Your plans for me, even when I cannot see forward. You hold my future. Amen." },
+  { ref:"1 Peter 5:7", theme:"Care", title:"He Cares for You",
+    verse:"Cast all your anxiety on him because he cares for you.",
+    body:["Four words carry everything: 'because he cares for you.' We are not told to cast our anxiety on God as a religious duty. We are told because He cares — personally, specifically, for you.","'Cast' is an active word. It implies releasing — throwing something from yourself toward someone else. Anxiety loves to grip. God's invitation is to open your hands and let it go.","You are not an inconvenience to God when you bring Him your fears. You are the very thing He is paying attention to."],
+    prayer:"Lord, I cast every fear onto You — not because I have to, but because I know You care for me. Amen." },
+  { ref:"Psalm 23:1-3", theme:"Guidance", title:"He Restores My Soul",
+    verse:"The Lord is my shepherd, I lack nothing. He makes me lie down in green pastures, he leads me beside quiet waters, he refreshes my soul.",
+    body:["David, who was himself a shepherd before he was a king, understood this intimacy. The Lord as shepherd means provision, guidance, and protection that is hands-on and constant.","Sheep only lie down when they feel completely safe — free from fear, hunger, and tension. The Shepherd creates the conditions for rest, because rest is not passive but necessary.","Soul-refreshment doesn't come from doing more. It comes from being led beside quiet waters by the One who knows exactly what you need."],
+    prayer:"Lord, be my Shepherd today. Lead me to the still places. Refresh my soul. I am in Your care. Amen." },
+  { ref:"Psalm 27:1", theme:"Courage", title:"Light in the Dark",
+    verse:"The Lord is my light and my salvation — whom shall I fear? The Lord is the stronghold of my life — of whom shall I be afraid?",
+    body:["Fear has a way of magnifying shadows. It takes what is uncertain and makes it feel enormous — looming, final, inescapable. But David's question cuts through the dark: Whom shall I fear? The answer he arrives at is not bravado. It is faith.","The Lord is light. Not just present in the light — He is the light itself. Where He is, darkness cannot remain. And where He is the stronghold of your life, no threat can claim your security.","Face today not with the confidence of someone who has no problems, but with the confidence of someone who knows Who holds them."],
+    prayer:"Lord, You are my light. I will not be afraid today. You are my stronghold. Amen." },
+  { ref:"Hebrews 11:1", theme:"Faith", title:"The Substance of Things",
+    verse:"Now faith is confidence in what we hope for and assurance about what we do not see.",
+    body:["Faith is not wishful thinking. The writer of Hebrews gives it a precise definition: it is confidence and assurance. Not vague optimism, but a settled trust in the reality of things not yet visible.","We live in a world that prizes what can be seen, measured, and proven. But the life of faith operates on a different currency — the currency of God's word, His character, and His track record. These are not thin foundations.","What are you trusting God for today that you cannot yet see? Hold it with both hands. Faith is the substance of it."],
+    prayer:"Lord, increase my faith. Help me hold tightly to the things I cannot see but know to be true. Amen." },
+  { ref:"Colossians 3:15", theme:"Peace", title:"Let Peace Rule",
+    verse:"Let the peace of Christ rule in your hearts, since as members of one body you were called to peace. And be thankful.",
+    body:["The word 'rule' here is drawn from athletics — it is the word for an umpire or referee who makes the final call. Paul is saying: let Christ's peace be the deciding factor in your heart. When anxiety and rest compete, let peace rule.","This is not a passive peace that just arrives on its own. It is a peace that must be invited to take the seat of authority. We choose to let it rule by turning our attention to Christ rather than our circumstances.","And at the end: be thankful. Gratitude is the environment in which this peace thrives."],
+    prayer:"Jesus, let Your peace rule in my heart today. Over every competing voice, let peace have the final word. Amen." },
+  { ref:"Ephesians 2:8-9", theme:"Grace", title:"Gift, Not Wage",
+    verse:"For it is by grace you have been saved, through faith — and this is not from yourselves, it is the gift of God — not by works, so that no one can boast.",
+    body:["There is a deep human instinct to earn our standing — with God, with others, with ourselves. We keep a running tally, hoping the good outweighs the bad. But salvation does not work like that.","Grace, by definition, is unearned. It is a gift given to those who cannot pay for it — and could not even if they tried. This is not a safety net for the barely-good-enough. It is the entire bridge for those who had no way across.","You cannot boast in what you did not earn. But you can receive it, with open hands and a grateful heart, every single day."],
+    prayer:"Father, I receive Your grace today — not as something I've earned, but as the gift it truly is. Thank You. Amen." },
+  { ref:"James 1:2-4", theme:"Perseverance", title:"The Work of Trials",
+    verse:"Consider it pure joy, my brothers and sisters, whenever you face trials of many kinds, because you know that the testing of your faith produces perseverance. Let perseverance finish its work so that you may be mature and complete, not lacking anything.",
+    body:["James doesn't say the trials are joyful. He says to 'consider it' joy — to choose a perspective. He is not minimizing your pain. He is pointing you to what the pain is producing.","Testing produces perseverance. Perseverance produces maturity. Maturity produces completeness. This is not a quick process. But it is a deliberate one. God is not wasting what you are going through.","You may be in the middle of the test right now. Stay. Let perseverance finish its work. The other side of this is someone more whole than you were before."],
+    prayer:"Lord, give me the grace to see my trials through Your eyes. Don't let me waste this season. Amen." },
+  { ref:"Micah 6:8", theme:"Justice", title:"Three Things",
+    verse:"He has shown you, O mortal, what is good. And what does the Lord require of you? To act justly and to love mercy and to walk humbly with your God.",
+    body:["In a world of complex religious and ethical systems, Micah distills the requirements of God into three clear phrases. Not sacrifice, not ritual, not perfection — but justice, mercy, and humble walking with God.","Act justly. It is external — what we do toward others. Love mercy. It is internal — what we carry in our posture toward people. Walk humbly with God. It is relational — the tenor of our ongoing life with Him.","These three are not burdens. They are the shape of a well-lived life. And they are ordered: justice rooted in mercy, mercy rooted in humility before God."],
+    prayer:"Lord, may I act justly, love mercy, and walk humbly with You today. Make me a person of these three things. Amen." },
+  { ref:"Psalm 119:105", theme:"Word", title:"A Lamp for the Path",
+    verse:"Your word is a lamp for my feet, a light on my path.",
+    body:["An ancient lamp didn't flood a landscape with light — it illuminated the next few steps. That is the image here. God's word doesn't always give us the entire map. It gives us enough light for where we are right now.","We often want God to show us the end of the story before we take the next step. But faith is walking by a lamp, not a floodlight. The step you can see is the one He's asking you to take.","Open the Word today — not to complete a checklist, but to find the light for your next step. It is there waiting for you."],
+    prayer:"Lord, let Your word be a lamp to my feet today. I trust that the light for each step will come as I walk. Amen." },
+  { ref:"Romans 5:3-4", theme:"Character", title:"The Chain of Suffering",
+    verse:"Not only so, but we also glory in our sufferings, because we know that suffering produces perseverance; perseverance, character; and character, hope.",
+    body:["Paul draws a chain: suffering → perseverance → character → hope. Notice that hope is at the end, not the beginning. We often want hope to precede the hard work. But the hope Paul describes is forged, not found.","Character is not given — it is grown. And it is grown in the soil of suffering endured with God. This is not masochism. It is the recognition that God doesn't waste difficulty. He redeems it.","What you are enduring right now is not the end of the chain. Follow it forward. Hope is what's being built."],
+    prayer:"Father, I trust the chain. Even in this suffering, I believe You are producing something lasting in me. Amen." },
+  { ref:"Philippians 4:13", theme:"Strength", title:"Through Him",
+    verse:"I can do all this through him who gives me strength.",
+    body:["Context changes everything. This verse is not a promise that every ambition will be fulfilled with divine help. It comes right after Paul describes seasons of abundance and seasons of need — and his point is that he has learned contentment in both.","The 'all this' is not 'all my dreams' — it is all of life's varying conditions: plenty and want, fullness and hunger. Christ is sufficient for every state. That is the strength Paul is pointing to.","Whatever your 'this' is today — a conversation you're dreading, a task that feels too heavy, a season that feels too long — you face it through Him. Not alone. Through."],
+    prayer:"Jesus, I face today through You, not around You or ahead of You. Be my strength in every condition. Amen." },
+  { ref:"Psalm 34:18", theme:"Comfort", title:"Close to the Broken",
+    verse:"The Lord is close to the brokenhearted and saves those who are crushed in spirit.",
+    body:["Of all the things God could be close to — the powerful, the righteous, the put-together — this verse says He is close to the brokenhearted. If your heart is broken today, you are in proximity to God, not away from Him.","'Crushed in spirit' speaks of something pressed down under weight, depleted, emptied. And into that emptiness, God comes. Not with explanations, but with presence.","You do not have to have it together to draw near to God. Your brokenness is not a barrier — it is a doorway."],
+    prayer:"Lord, I am brokenhearted. I don't have the words. Be close to me today, just as You have promised. Amen." },
+  { ref:"John 3:16", theme:"Love", title:"So Loved",
+    verse:"For God so loved the world that he gave his one and only Son, that whoever believes in him shall not perish but have eternal life.",
+    body:["The word 'so' is doing a great deal of work here. Not simply 'God loved the world' — but God so loved. With such magnitude, such specificity, such cost. The measure of the love is the measure of the gift: His only Son.","'Whoever' is an open word. It excludes no one based on history, nationality, or failure. The invitation is as wide as the world God loves. Including you. Especially you.","This is not just a truth for new believers or children's ministry. It is the foundation that every other day of faith is built on. Return to it today like you're reading it for the first time."],
+    prayer:"Father, let the truth of Your love settle deep in me today. You so loved — me included. Thank You. Amen." },
+  { ref:"Galatians 5:22-23", theme:"Fruit", title:"Fruit, Not Performance",
+    verse:"But the fruit of the Spirit is love, joy, peace, forbearance, kindness, goodness, faithfulness, gentleness and self-control. Against such things there is no law.",
+    body:["Notice that these are called the fruit of the Spirit — not the fruit of effort, willpower, or self-improvement. Fruit is not manufactured; it grows. And it grows from what is alive in us.","The nine qualities listed here are not a checklist to perform but signs of a life rooted in the Spirit. When the Spirit is at home in us, these things emerge naturally over time, the way apples emerge from a healthy apple tree.","Which of these nine feels most absent in your life today? That is not an invitation to try harder. It is an invitation to return to the root — to abide, to ask, and to let Him produce what only He can."],
+    prayer:"Holy Spirit, produce Your fruit in me today. I cannot grow it on my own — but You can. I yield to You. Amen." },
+  { ref:"Psalm 139:14", theme:"Identity", title:"Wonderfully Made",
+    verse:"I praise you because I am fearfully and wonderfully made; your works are wonderful, I know that full well.",
+    body:["The word 'fearfully' here doesn't mean timidly — it means with awe and reverence. David is saying: my creation was an act of wonder. God did not assemble you carelessly. Every detail was intentional.","In a world that measures worth by productivity, appearance, and achievement, this verse repositions the foundation entirely. Your worth is not in what you do or how you look. It is in who made you and the care with which He did it.","You are not a mistake, an accident, or an afterthought. You are a work of God — wonderful, by His own estimation. Let that sink in today."],
+    prayer:"Lord, help me see myself the way You see me — fearfully and wonderfully made. Replace self-criticism with Your truth. Amen." },
+  { ref:"2 Timothy 1:7", theme:"Courage", title:"Not Timidity",
+    verse:"For the Spirit God gave us does not make us timid, but gives us power, love and self-discipline.",
+    body:["Fear is real. Timidity is real. But they are not the spirit God gave you. The Spirit He gave is one of power — the capacity to act. Love — the motivation to act rightly. And self-discipline — the wisdom to act with restraint.","This is a verse worth returning to whenever fear is louder than faith. The spirit of timidity is not from God. That voice telling you you're not enough, that you should shrink back, that you can't — that is not your identity in Christ.","Step into what God is calling you toward today. Not in your own strength, but in the power, love, and sound mind that His Spirit provides."],
+    prayer:"Lord, I renounce timidity today. You gave me a spirit of power, love, and self-discipline. I walk in that. Amen." },
+  { ref:"Luke 1:37", theme:"Faith", title:"Nothing Is Impossible",
+    verse:"For no word from God will ever fail.",
+    body:["Gabriel said this to Mary in the context of the impossible — a virgin pregnant, an old woman conceiving. His point was not to explain the mechanism but to point to the Source. When God speaks, the word does not return empty.","We carry unresolved prayers, unfulfilled promises, and chapters that seem permanently stuck. And into those spaces, this truth stands: no word from God will ever fail. Not some words. Not words spoken to better people. No word.","What has God spoken over your life that you've begun to doubt? Today, hold it again. His word does not expire, and it does not fail."],
+    prayer:"Lord, I believe Your word over my life. Where I have doubted, restore my faith. Nothing is impossible with You. Amen." },
+];
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const dayOfYear = d => Math.floor((d - new Date(d.getFullYear(),0,0)) / 86400000);
+const todayDev  = () => DEVS[dayOfYear(new Date()) % DEVS.length];
+const isSunday  = (d = new Date()) => d.getDay() === 0;
+const daysToSun = () => { const d = new Date().getDay(); return d === 0 ? 0 : 7 - d; };
+const fmtFull   = d  => new Intl.DateTimeFormat("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"}).format(d);
+const fmtShort  = s  => new Intl.DateTimeFormat("en-US",{month:"short",day:"numeric",year:"numeric"}).format(new Date(s + "T12:00:00"));
+const uid       = () => Date.now().toString(36) + Math.random().toString(36).slice(2);
+const greet     = () => { const h = new Date().getHours(); return h < 12 ? "Good morning" : h < 17 ? "Good afternoon" : "Good evening"; };
+const ff        = serif => serif ? "'Lora','Georgia',serif" : "'Inter','Helvetica Neue',sans-serif";
+const sw        = { width:"100%", boxSizing:"border-box" };
+
+// ── localStorage Journal DB ──────────────────────────────────────────────────
+const DB = {
+  async all() {
+    try { return JSON.parse(localStorage.getItem("ds:j") || "[]"); } catch { return []; }
+  },
+  async save(e) {
+    const a = await DB.all();
+    const i = a.findIndex(x => x.id === e.id);
+    if (i >= 0) a[i] = e; else a.unshift(e);
+    localStorage.setItem("ds:j", JSON.stringify(a));
+    return a;
+  },
+  async del(id) {
+    const a = (await DB.all()).filter(e => e.id !== id);
+    localStorage.setItem("ds:j", JSON.stringify(a));
+    return a;
+  },
+  filter(all, range, specific) {
+    if (range === "specific" && specific) {
+      const t  = new Date(specific + "T12:00:00");
+      const td = new Date(t.getFullYear(), t.getMonth(), t.getDate()).getTime();
+      return all.filter(e => {
+        const d = new Date(e.date + "T12:00:00");
+        return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime() === td;
+      });
+    }
+    const days = { d7: 7, d30: 30, y1: 365 }[range];
+    if (!days) return all;
+    return all.filter(e => new Date(e.date + "T12:00:00").getTime() >= Date.now() - days * 86400000);
+  }
+};
+
+// ── Icons ────────────────────────────────────────────────────────────────────
+const I = ({ n, s = 22, c = "currentColor" }) => {
+  const p = { width:s, height:s, viewBox:"0 0 24 24", fill:"none", stroke:c, strokeWidth:1.6, strokeLinecap:"round", strokeLinejoin:"round" };
+  return ({
+    home:      <svg {...p}><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>,
+    journal:   <svg {...p}><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
+    community: <svg {...p}><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>,
+    audio:     <svg {...p}><circle cx="12" cy="12" r="10"/><polygon points="10 8 16 12 10 16 10 8" fill={c} stroke="none"/></svg>,
+    plus:      <svg {...p}><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>,
+    back:      <svg {...p}><polyline points="15 18 9 12 15 6"/></svg>,
+    trash:     <svg {...p}><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>,
+    edit:      <svg {...p}><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
+    check:     <svg {...{...p, strokeWidth:2}}><polyline points="20 6 9 17 4 12"/></svg>,
+    refresh:   <svg {...p}><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>,
+    heart:     <svg {...p}><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>,
+    sun:       <svg {...p}><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>,
+    book:      <svg {...p}><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/></svg>,
+    play:      <svg width={s} height={s} viewBox="0 0 24 24" fill={c}><polygon points="5 3 19 12 5 21"/></svg>,
+    pause:     <svg width={s} height={s} viewBox="0 0 24 24" fill={c}><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>,
+  })[n] || null;
+};
+
+// ── Shared ────────────────────────────────────────────────────────────────────
+const Tag = ({ label, color = C.accent, bg = C.aLight }) => (
+  <span style={{ display:"inline-block", fontFamily:ff(), fontSize:10, letterSpacing:1.6,
+    textTransform:"uppercase", fontWeight:600, color, background:bg, padding:"4px 12px", borderRadius:20 }}>
+    {label}
+  </span>
+);
+
+// ── Home Screen ───────────────────────────────────────────────────────────────
+function HomeScreen({ dev }) {
+  const [toast, setToast]     = useState("");
+  const [liked, setLiked]     = useState(false);
+  const [count, setCount]     = useState(() => Math.floor(Math.random() * 40) + 12);
+
+  const share = async pl => {
+    const text = `"${dev.verse}" — ${dev.ref} (NIV)\n\n${dev.title}\n\nShared from Daily Still`;
+    const url  = window.location.href;
+    if (pl === "facebook")  window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(text)}`, "_blank");
+    else if (pl === "messenger") window.open(`https://www.facebook.com/dialog/send?link=${encodeURIComponent(url)}&app_id=291494419107&redirect_uri=${encodeURIComponent(url)}`, "_blank");
+    else if (pl === "instagram") {
+      try { await navigator.clipboard.writeText(text); } catch(e) {}
+      setToast("📋 Copied! Paste in your Instagram story or caption.");
+      setTimeout(() => setToast(""), 3500);
+    }
+  };
+
+  return (
+    <div style={{ paddingBottom:32 }}>
+      {/* Header */}
+      <div style={{ background:C.card, padding:"44px 24px 28px", borderBottom:`1px solid ${C.border}` }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start", marginBottom:20 }}>
+          <div>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:6 }}>
+              <div style={{ width:6, height:6, borderRadius:"50%", background:C.accent }}/>
+              <span style={{ fontFamily:ff(), fontSize:11, letterSpacing:1.8, textTransform:"uppercase", color:C.muted, fontWeight:500 }}>{greet()}</span>
+            </div>
+            <p style={{ fontFamily:ff(), fontSize:12, color:C.muted, margin:0 }}>{fmtFull(new Date())}</p>
+          </div>
+          <Tag label={dev.theme}/>
+        </div>
+        <div style={{ display:"flex", alignItems:"baseline", gap:6 }}>
+          <span style={{ fontFamily:ff(true), fontSize:26, fontWeight:600, color:C.text, letterSpacing:-.5 }}>Daily Still</span>
+          <span style={{ fontFamily:ff(true), fontSize:13, color:C.muted, fontStyle:"italic" }}>· NIV</span>
+        </div>
+      </div>
+
+      {/* Verse card */}
+      <div style={{ margin:"28px 24px 0", padding:"24px", background:C.card, borderRadius:18, border:`1px solid ${C.border}`, boxShadow:"0 2px 12px rgba(0,0,0,.04)" }}>
+        <p style={{ fontFamily:ff(true), fontSize:20, fontStyle:"italic", color:C.text, lineHeight:1.75, margin:"0 0 14px" }}>"{dev.verse}"</p>
+        <div style={{ display:"flex", alignItems:"center", justifyContent:"space-between" }}>
+          <span style={{ fontFamily:ff(), fontSize:12, color:C.warm, fontWeight:600, letterSpacing:.4 }}>— {dev.ref} (NIV)</span>
+          <button onClick={() => { setLiked(!liked); setCount(c => liked ? c - 1 : c + 1); }}
+            style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:5, color:liked?C.sun:C.muted, fontFamily:ff(), fontSize:12, fontWeight:500, padding:0 }}>
+            <svg width={15} height={15} viewBox="0 0 24 24" fill={liked?C.sun:"none"} stroke={liked?C.sun:C.muted} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/>
+            </svg>
+            {count}
+          </button>
+        </div>
+      </div>
+
+      {/* Reflection */}
+      <div style={{ padding:"28px 24px 0" }}>
+        <h2 style={{ fontFamily:ff(true), fontSize:20, fontWeight:600, color:C.text, margin:"0 0 18px", lineHeight:1.3 }}>{dev.title}</h2>
+        {dev.body.map((para, i) => (
+          <p key={i} style={{ fontFamily:ff(true), fontSize:15, color:C.sub, lineHeight:1.9, margin:"0 0 18px" }}>{para}</p>
+        ))}
+      </div>
+
+      {/* Prayer */}
+      <div style={{ margin:"4px 24px 0", padding:"20px 22px", background:`linear-gradient(135deg,${C.aLight},#F0F5F0)`, borderRadius:14, borderLeft:`3px solid ${C.accent}` }}>
+        <p style={{ fontFamily:ff(), fontSize:10, letterSpacing:1.8, textTransform:"uppercase", color:C.accent, fontWeight:700, margin:"0 0 10px" }}>Today's Prayer</p>
+        <p style={{ fontFamily:ff(true), fontSize:14, fontStyle:"italic", color:C.sub, lineHeight:1.8, margin:0 }}>{dev.prayer}</p>
+      </div>
+
+      {/* Share */}
+      <div style={{ padding:"28px 24px 0" }}>
+        <p style={{ fontFamily:ff(), fontSize:10, letterSpacing:1.8, textTransform:"uppercase", color:C.muted, fontWeight:600, margin:"0 0 12px", textAlign:"center" }}>Share this devotion</p>
+        <div style={{ display:"flex", gap:8 }}>
+          {[
+            { id:"facebook",  label:"Facebook",  bg:"#1877F2" },
+            { id:"messenger", label:"Messenger", bg:"#0084FF" },
+            { id:"instagram", label:"Instagram", bg:"linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888)" },
+          ].map(({ id, label, bg }) => (
+            <button key={id} onClick={() => share(id)}
+              style={{ flex:1, border:"none", borderRadius:12, padding:"11px 4px", background:bg, color:"#fff", fontSize:11, fontWeight:700, fontFamily:ff(), cursor:"pointer", letterSpacing:.2 }}>
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {toast && (
+        <div style={{ position:"fixed", bottom:90, left:"50%", transform:"translateX(-50%)", background:"#1C1917", color:"#fff", borderRadius:14, padding:"13px 22px", fontSize:13, fontFamily:ff(), zIndex:300, maxWidth:300, textAlign:"center", boxShadow:"0 4px 28px rgba(0,0,0,.3)" }}>
+          {toast}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Journal Screen ────────────────────────────────────────────────────────────
+function JournalScreen({ dev }) {
+  const [journals, setJournals] = useState([]);
+  const [view, setView]         = useState("list");
+  const [current, setCurrent]   = useState(null);
+  const [filter, setFilter]     = useState("all");
+  const [specific, setSpecific] = useState("");
+  const [title, setTitle]       = useState("");
+  const [body, setBody]         = useState("");
+  const [saving, setSaving]     = useState(false);
+
+  useEffect(() => { DB.all().then(setJournals); }, []);
+
+  const filtered = DB.filter(journals, filter, specific);
+
+  const newEntry = () => { setCurrent(null); setTitle(""); setBody(""); setView("edit"); };
+  const openEntry = e => { setCurrent(e); setTitle(e.title); setBody(e.body); setView("read"); };
+  const saveEntry = async () => {
+    if (!body.trim()) return;
+    setSaving(true);
+    const e = { id: current?.id || uid(), date: current?.date || new Date().toISOString().slice(0, 10), title: title.trim() || "Untitled", body: body.trim(), devRef: dev.ref, updatedAt: new Date().toISOString() };
+    const updated = await DB.save(e);
+    setJournals(updated); setCurrent(e); setSaving(false); setView("read");
+  };
+  const delEntry = async id => {
+    if (!window.confirm("Delete this entry?")) return;
+    setJournals(await DB.del(id)); setView("list");
+  };
+
+  const FBtn = ({ id, label }) => (
+    <button onClick={() => setFilter(id)}
+      style={{ border:`1.5px solid ${filter===id?C.accent:C.border}`, borderRadius:20, padding:"6px 14px", fontSize:11, fontFamily:ff(), fontWeight:filter===id?600:400, cursor:"pointer", background:filter===id?C.aLight:C.card, color:filter===id?C.accent:C.sub, whiteSpace:"nowrap" }}>
+      {label}
+    </button>
+  );
+
+  if (view === "edit") return (
+    <div style={{ minHeight:"100vh", background:C.bg }}>
+      <div style={{ display:"flex", alignItems:"center", gap:12, padding:"44px 20px 16px", background:C.card, borderBottom:`1px solid ${C.border}` }}>
+        <button onClick={() => setView(current ? "read" : "list")} style={{ background:"none", border:"none", cursor:"pointer", padding:4 }}><I n="back" s={22} c={C.sub}/></button>
+        <h2 style={{ fontFamily:ff(true), fontSize:18, fontWeight:600, color:C.text, margin:0, flex:1 }}>{current ? "Edit Entry" : "New Entry"}</h2>
+        <button onClick={saveEntry} disabled={!body.trim() || saving}
+          style={{ background:body.trim()&&!saving?C.accent:"#ccc", border:"none", borderRadius:10, padding:"8px 18px", color:"#fff", fontSize:13, fontWeight:600, fontFamily:ff(), cursor:body.trim()&&!saving?"pointer":"not-allowed", display:"flex", alignItems:"center", gap:5 }}>
+          <I n={saving?"check":"edit"} s={14} c="#fff"/> Save
+        </button>
+      </div>
+      <div style={{ padding:"22px 24px" }}>
+        <div style={{ background:C.aLight, borderRadius:10, padding:"12px 16px", marginBottom:20 }}>
+          <p style={{ fontFamily:ff(), fontSize:10, letterSpacing:1.6, textTransform:"uppercase", color:C.accent, fontWeight:700, margin:"0 0 4px" }}>Today's Verse</p>
+          <p style={{ fontFamily:ff(true), fontSize:13, color:C.muted, fontStyle:"italic", margin:0, lineHeight:1.6 }}>{dev.ref} — "{dev.verse.slice(0,90)}…"</p>
+        </div>
+        <input value={title} onChange={e=>setTitle(e.target.value)} placeholder="Entry title (optional)"
+          style={{ ...sw, fontFamily:ff(true), fontSize:20, fontWeight:600, border:"none", background:"none", color:C.text, padding:0, marginBottom:16, outline:"none" }}/>
+        <div style={{ height:1, background:C.border, marginBottom:16 }}/>
+        <textarea value={body} onChange={e=>setBody(e.target.value)} placeholder="Write your reflection, prayer, or thoughts…" rows={16}
+          style={{ ...sw, fontFamily:ff(true), fontSize:15, lineHeight:1.9, border:"none", background:"none", color:C.sub, padding:0, resize:"none", outline:"none" }}/>
+      </div>
+    </div>
+  );
+
+  if (view === "read" && current) return (
+    <div style={{ minHeight:"100vh", background:C.bg }}>
+      <div style={{ display:"flex", alignItems:"center", gap:12, padding:"44px 20px 16px", background:C.card, borderBottom:`1px solid ${C.border}` }}>
+        <button onClick={() => setView("list")} style={{ background:"none", border:"none", cursor:"pointer", padding:4 }}><I n="back" s={22} c={C.sub}/></button>
+        <p style={{ fontFamily:ff(), fontSize:12, color:C.muted, margin:0, flex:1 }}>{fmtShort(current.date)}</p>
+        <button onClick={() => setView("edit")} style={{ background:"none", border:"none", cursor:"pointer", padding:6, marginRight:2 }}><I n="edit" s={19} c={C.sub}/></button>
+        <button onClick={() => delEntry(current.id)} style={{ background:"none", border:"none", cursor:"pointer", padding:6 }}><I n="trash" s={19} c="#B06060"/></button>
+      </div>
+      <div style={{ padding:"24px" }}>
+        {current.devRef && <Tag label={current.devRef}/>}
+        <h2 style={{ fontFamily:ff(true), fontSize:22, fontWeight:600, color:C.text, margin:"14px 0 20px" }}>{current.title}</h2>
+        {current.body.split("\n").filter(Boolean).map((p,i) => (
+          <p key={i} style={{ fontFamily:ff(true), fontSize:15, color:C.sub, lineHeight:1.9, margin:"0 0 16px" }}>{p}</p>
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <div>
+      <div style={{ padding:"44px 24px 20px", background:C.card, borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"center" }}>
+        <div style={{ flex:1 }}>
+          <h1 style={{ fontFamily:ff(true), fontSize:24, fontWeight:600, color:C.text, margin:"0 0 3px" }}>My Journal</h1>
+          <p style={{ fontFamily:ff(), fontSize:13, color:C.muted, margin:0 }}>{journals.length} {journals.length===1?"entry":"entries"}</p>
+        </div>
+        <button onClick={newEntry} style={{ background:C.accent, border:"none", borderRadius:13, width:46, height:46, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", boxShadow:`0 2px 10px ${C.accent}50` }}>
+          <I n="plus" s={22} c="#fff"/>
+        </button>
+      </div>
+
+      <div style={{ padding:"16px 24px 0", display:"flex", gap:8, overflowX:"auto" }}>
+        <FBtn id="all" label="All"/><FBtn id="d7" label="7 Days"/><FBtn id="d30" label="30 Days"/><FBtn id="y1" label="1 Year"/><FBtn id="specific" label="By Date"/>
+      </div>
+
+      {filter === "specific" && (
+        <div style={{ padding:"12px 24px 0" }}>
+          <input type="date" value={specific} onChange={e=>setSpecific(e.target.value)}
+            style={{ ...sw, fontFamily:ff(), fontSize:14, border:`1.5px solid ${C.border}`, borderRadius:12, padding:"11px 14px", background:C.card, color:C.text, outline:"none" }}/>
+        </div>
+      )}
+
+      <div style={{ padding:"16px 24px" }}>
+        {filtered.length === 0 ? (
+          <div style={{ textAlign:"center", padding:"52px 0" }}>
+            <div style={{ width:56, height:56, borderRadius:"50%", background:C.aLight, display:"flex", alignItems:"center", justifyContent:"center", margin:"0 auto 16px" }}>
+              <I n="book" s={26} c={C.accent}/>
+            </div>
+            <p style={{ fontFamily:ff(true), fontSize:16, color:C.muted, margin:"0 0 6px" }}>No entries yet</p>
+            <p style={{ fontFamily:ff(), fontSize:13, color:C.muted, margin:0 }}>Tap + to write your first reflection</p>
+          </div>
+        ) : filtered.map(e => (
+          <button key={e.id} onClick={() => openEntry(e)}
+            style={{ ...sw, textAlign:"left", background:C.card, border:`1px solid ${C.border}`, borderRadius:16, padding:"16px 18px", cursor:"pointer", marginBottom:10, boxShadow:"0 1px 6px rgba(0,0,0,.04)" }}>
+            <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginBottom:7 }}>
+              <span style={{ fontFamily:ff(), fontSize:10, color:C.accent, fontWeight:700, letterSpacing:1.2, textTransform:"uppercase" }}>{e.devRef || "Personal"}</span>
+              <span style={{ fontFamily:ff(), fontSize:11, color:C.muted }}>{fmtShort(e.date)}</span>
+            </div>
+            <p style={{ fontFamily:ff(true), fontSize:15, fontWeight:600, color:C.text, margin:"0 0 5px", lineHeight:1.3 }}>{e.title}</p>
+            <p style={{ fontFamily:ff(), fontSize:13, color:C.muted, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{e.body.slice(0,85)}{e.body.length>85?"…":""}</p>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Community Screen ──────────────────────────────────────────────────────────
+const AV = ["#6B8F71","#A67850","#6B7E9E","#8E6B8F","#7E9068","#A66B6B"];
+const FALLBACK = [
+  { name:"Maria S.", location:"Manila, PH",     word:"Present",  reflection:"This verse meets me right where I am today. Being still feels impossible in my busy household, but God's reminder is gentle — I don't have to have it all together for Him to be present." },
+  { name:"James O.", location:"Lagos, NG",      word:"Held",     reflection:"I started my morning with this verse and just sat in silence for five minutes. It was harder than it sounds, but something shifted. He is exalted, and I am held." },
+  { name:"Sarah K.", location:"Seoul, KR",      word:"Slow",     reflection:"My mind is always racing. Reading this today felt like a hand on my shoulder saying: slow down, I've got this. So grateful for this reminder." },
+  { name:"Daniel M.",location:"Nairobi, KE",    word:"Trust",    reflection:"Stillness as an act of faith — not inaction, but trust. That reframe changed everything for me this morning. God is God; I don't have to be." },
+  { name:"Grace T.", location:"Toronto, CA",    word:"Breathe",  reflection:"I've been so anxious lately. This devotion reminded me that the battle belongs to God. My job is to know Him, not to fix everything. Breathing easier now." },
+];
+
+function CommunityScreen({ dev }) {
+  const [posts, setPosts]     = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const loadFeed = async () => {
+    setLoading(true); setPosts([]);
+    const endpoint = CONFIG.PROXY_URL || "https://api.anthropic.com/v1/messages";
+    const headers  = { "Content-Type": "application/json" };
+    if (!CONFIG.PROXY_URL && CONFIG.ANTHROPIC_API_KEY) {
+      headers["x-api-key"]           = CONFIG.ANTHROPIC_API_KEY;
+      headers["anthropic-version"]   = "2023-06-01";
+      headers["anthropic-dangerous-direct-browser-access"] = "true";
+    }
+    if (!CONFIG.PROXY_URL && !CONFIG.ANTHROPIC_API_KEY) {
+      setPosts(FALLBACK); setLoading(false); return;
+    }
+    try {
+      const res  = await fetch(endpoint, { method:"POST", headers, body: JSON.stringify({
+        model:"claude-sonnet-4-20250514", max_tokens:1000,
+        system:"Return ONLY valid JSON. No markdown, no preamble.",
+        messages:[{ role:"user", content:`Generate 5 short personal reflections on: "${dev.verse}" (${dev.ref}), theme: ${dev.theme}. Return JSON array: [{"name":"First L.","location":"City, Code","reflection":"2-3 genuine sentences","word":"one word"}]. Diverse locations across Asia, Africa, Europe, Americas.` }]
+      })});
+      const data  = await res.json();
+      const raw   = data.content?.find(b => b.type === "text")?.text || "";
+      const parsed = JSON.parse(raw.replace(/```json|```/g,"").trim());
+      setPosts(Array.isArray(parsed) ? parsed : FALLBACK);
+    } catch { setPosts(FALLBACK); }
+    setLoading(false);
+  };
+
+  useEffect(() => { loadFeed(); }, []);
+  const init = n => n.split(" ").map(w => w[0]).join("").slice(0,2);
+
+  return (
+    <div>
+      <div style={{ padding:"44px 24px 20px", background:C.card, borderBottom:`1px solid ${C.border}`, display:"flex", alignItems:"center" }}>
+        <div style={{ flex:1 }}>
+          <h1 style={{ fontFamily:ff(true), fontSize:24, fontWeight:600, color:C.text, margin:"0 0 3px" }}>Community</h1>
+          <p style={{ fontFamily:ff(), fontSize:13, color:C.muted, margin:0 }}>Today's reflections · {dev.ref}</p>
+        </div>
+        <button onClick={loadFeed} disabled={loading} style={{ background:"none", border:`1.5px solid ${C.border}`, borderRadius:12, width:44, height:44, display:"flex", alignItems:"center", justifyContent:"center", cursor:"pointer", opacity:loading?.5:1 }}>
+          <I n="refresh" s={17} c={C.sub}/>
+        </button>
+      </div>
+
+      <div style={{ margin:"20px 24px 0", padding:"16px 18px", background:C.card, borderRadius:16, border:`1px solid ${C.border}`, display:"flex", gap:14, alignItems:"flex-start" }}>
+        <div style={{ width:3, flexShrink:0, alignSelf:"stretch", background:C.accent, borderRadius:4, minHeight:40 }}/>
+        <div>
+          <p style={{ fontFamily:ff(true), fontSize:13, fontStyle:"italic", color:C.sub, margin:"0 0 6px", lineHeight:1.65 }}>
+            "{dev.verse.length > 130 ? dev.verse.slice(0,130) + "…" : dev.verse}"
+          </p>
+          <p style={{ fontFamily:ff(), fontSize:11, color:C.warm, fontWeight:600, margin:0, letterSpacing:.4 }}>— {dev.ref}</p>
+        </div>
+      </div>
+
+      <div style={{ padding:"16px 24px" }}>
+        {loading ? Array.from({length:3}).map((_,i) => (
+          <div key={i} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:16, padding:"16px 18px", marginBottom:10 }}>
+            <div style={{ display:"flex", gap:12, marginBottom:12, alignItems:"center" }}>
+              <div style={{ width:38, height:38, borderRadius:"50%", background:C.border, flexShrink:0 }}/>
+              <div style={{ flex:1 }}>
+                <div style={{ height:11, background:C.border, borderRadius:6, marginBottom:7, width:"55%" }}/>
+                <div style={{ height:9, background:C.border, borderRadius:6, width:"35%" }}/>
+              </div>
+            </div>
+            <div style={{ height:10, background:C.border, borderRadius:6, marginBottom:7 }}/>
+            <div style={{ height:10, background:C.border, borderRadius:6, width:"75%" }}/>
+          </div>
+        )) : posts.map((p, i) => (
+          <div key={i} style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:16, padding:"16px 18px", marginBottom:10, boxShadow:"0 1px 6px rgba(0,0,0,.04)" }}>
+            <div style={{ display:"flex", gap:11, alignItems:"center", marginBottom:10 }}>
+              <div style={{ width:38, height:38, borderRadius:"50%", background:AV[i%AV.length], display:"flex", alignItems:"center", justifyContent:"center", color:"#fff", fontFamily:ff(), fontSize:13, fontWeight:700, flexShrink:0 }}>{init(p.name)}</div>
+              <div style={{ flex:1, minWidth:0 }}>
+                <p style={{ fontFamily:ff(), fontSize:13, fontWeight:600, color:C.text, margin:0 }}>{p.name}</p>
+                <p style={{ fontFamily:ff(), fontSize:11, color:C.muted, margin:0 }}>{p.location}</p>
+              </div>
+              <span style={{ fontSize:10, fontFamily:ff(), letterSpacing:1.2, textTransform:"uppercase", fontWeight:700, color:AV[i%AV.length], background:`${AV[i%AV.length]}15`, padding:"3px 10px", borderRadius:12, whiteSpace:"nowrap", flexShrink:0 }}>{p.word}</span>
+            </div>
+            <p style={{ fontFamily:ff(true), fontSize:14, color:C.sub, lineHeight:1.8, margin:"0 0 10px" }}>{p.reflection}</p>
+            <div style={{ display:"flex", justifyContent:"flex-end" }}>
+              <button style={{ background:"none", border:"none", cursor:"pointer", display:"flex", alignItems:"center", gap:4, color:C.muted, fontSize:12, fontFamily:ff(), padding:0 }}>
+                <I n="heart" s={13} c={C.muted}/> Amen
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ── Audio Screen ──────────────────────────────────────────────────────────────
+function AudioScreen({ dev }) {
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const audioRef = useRef(null);
+  const fmtT = s => `${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2,"0")}`;
+  const pct  = duration ? (progress / duration) * 100 : 0;
+
+  const toggle = () => {
+    if (!audioRef.current) return;
+    if (playing) { audioRef.current.pause(); setPlaying(false); }
+    else         { audioRef.current.play();  setPlaying(true);  }
+  };
+
+  const seek = frac => {
+    const t = frac * duration;
+    setProgress(t);
+    if (audioRef.current) audioRef.current.currentTime = t;
+  };
+
+  return (
+    <div>
+      <div style={{ padding:"44px 24px 20px", background:C.card, borderBottom:`1px solid ${C.border}` }}>
+        <h1 style={{ fontFamily:ff(true), fontSize:24, fontWeight:600, color:C.text, margin:"0 0 3px" }}>Sunday Audio</h1>
+        <p style={{ fontFamily:ff(), fontSize:13, color:C.muted, margin:0 }}>Weekly spoken devotion</p>
+      </div>
+
+      {isSunday() ? (
+        <div style={{ padding:"28px 24px" }}>
+          <div style={{ background:C.sunBg, borderRadius:22, padding:"30px 26px", border:`1px solid ${C.sun}25`, boxShadow:`0 4px 20px ${C.sun}15` }}>
+            <div style={{ display:"flex", alignItems:"center", gap:8, marginBottom:22 }}>
+              <div style={{ width:8, height:8, borderRadius:"50%", background:C.sun }}/>
+              <span style={{ fontFamily:ff(), fontSize:10, letterSpacing:1.8, textTransform:"uppercase", color:C.sun, fontWeight:700 }}>This Sunday · Now Playing</span>
+            </div>
+            <h2 style={{ fontFamily:ff(true), fontSize:20, fontWeight:600, color:C.text, margin:"0 0 4px", lineHeight:1.3 }}>{dev.title}</h2>
+            <p style={{ fontFamily:ff(), fontSize:12, color:C.warm, margin:"0 0 30px", fontWeight:500 }}>{dev.ref} · {dev.theme}</p>
+
+            <audio ref={audioRef} src={AUDIO_SRC}
+              onTimeUpdate={() => audioRef.current && setProgress(audioRef.current.currentTime)}
+              onLoadedMetadata={() => audioRef.current && setDuration(audioRef.current.duration)}
+              onEnded={() => setPlaying(false)}
+            />
+
+            {/* Progress bar */}
+            <div style={{ marginBottom:24 }}>
+              <div style={{ position:"relative", height:4, background:`${C.sun}25`, borderRadius:4, cursor:"pointer", marginBottom:8 }}
+                onClick={e => { const r = e.currentTarget.getBoundingClientRect(); seek((e.clientX - r.left) / r.width); }}>
+                <div style={{ position:"absolute", top:0, left:0, height:"100%", width:`${pct}%`, background:C.sun, borderRadius:4 }}/>
+                <div style={{ position:"absolute", top:"50%", left:`${pct}%`, transform:"translate(-50%,-50%)", width:12, height:12, borderRadius:"50%", background:C.sun, boxShadow:`0 0 0 3px ${C.sunBg}` }}/>
+              </div>
+              <div style={{ display:"flex", justifyContent:"space-between", fontFamily:ff(), fontSize:11, color:C.warm }}>
+                <span>{fmtT(progress)}</span><span>{duration ? fmtT(duration) : "--:--"}</span>
+              </div>
+            </div>
+
+            <div style={{ display:"flex", justifyContent:"center" }}>
+              <button onClick={toggle} style={{ width:66, height:66, borderRadius:"50%", background:C.sun, border:"none", cursor:"pointer", display:"flex", alignItems:"center", justifyContent:"center", boxShadow:`0 4px 20px ${C.sun}60` }}>
+                <I n={playing?"pause":"play"} s={24} c="#fff"/>
+              </button>
+            </div>
+          </div>
+          <p style={{ fontFamily:ff(), fontSize:12, color:C.muted, textAlign:"center", marginTop:20, lineHeight:1.7 }}>A new audio devotion drops every Sunday.<br/>Return next week for a fresh word.</p>
+        </div>
+      ) : (
+        <div style={{ padding:"40px 24px", textAlign:"center" }}>
+          <div style={{ display:"flex", justifyContent:"center", alignItems:"flex-end", gap:4, height:48, marginBottom:28 }}>
+            {[18,28,40,34,20,44,30,22,36,16,42,26].map((h,i) => (
+              <div key={i} style={{ width:5, height:h, background:i%3===0?C.sun:`${C.sun}40`, borderRadius:3 }}/>
+            ))}
+          </div>
+          <div style={{ display:"inline-flex", alignItems:"center", gap:8, background:C.sunBg, border:`1.5px solid ${C.sun}30`, borderRadius:20, padding:"8px 18px", marginBottom:24 }}>
+            <I n="sun" s={15} c={C.sun}/>
+            <span style={{ fontFamily:ff(), fontSize:12, color:C.sun, fontWeight:700, letterSpacing:.4 }}>
+              {daysToSun() === 1 ? "Tomorrow is Sunday! 🌅" : `${daysToSun()} days until Sunday`}
+            </span>
+          </div>
+          <h2 style={{ fontFamily:ff(true), fontSize:22, fontWeight:600, color:C.text, margin:"0 0 8px" }}>Coming This Sunday</h2>
+          <p style={{ fontFamily:ff(), fontSize:14, color:C.muted, margin:"0 0 28px", lineHeight:1.7 }}>The weekly audio devotion is released every Sunday morning. Tune in for a guided spoken reflection.</p>
+          <div style={{ background:C.card, border:`1px solid ${C.border}`, borderRadius:18, padding:"20px 22px", textAlign:"left", boxShadow:"0 2px 10px rgba(0,0,0,.04)" }}>
+            <Tag label="This week's topic"/>
+            <h3 style={{ fontFamily:ff(true), fontSize:17, fontWeight:600, color:C.text, margin:"12px 0 5px", lineHeight:1.3 }}>{dev.title}</h3>
+            <p style={{ fontFamily:ff(), fontSize:12, color:C.muted, margin:0 }}>{dev.ref} · {dev.theme}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Root ──────────────────────────────────────────────────────────────────────
+function App() {
+  const [tab, setTab] = useState("home");
+  const dev = todayDev();
+  const nav = [
+    { id:"home",      label:"Today",     ico:"home"      },
+    { id:"journal",   label:"Journal",   ico:"journal"   },
+    { id:"community", label:"Community", ico:"community" },
+    { id:"audio",     label:"Sunday",    ico:"audio"     },
+  ];
+
+  return (
+    <div style={{ fontFamily:ff(), background:C.bg, minHeight:"100vh", maxWidth:430, margin:"0 auto", position:"relative", paddingBottom:72, overflowX:"hidden" }}>
+      {tab === "home"      && <HomeScreen      dev={dev}/>}
+      {tab === "journal"   && <JournalScreen   dev={dev}/>}
+      {tab === "community" && <CommunityScreen dev={dev}/>}
+      {tab === "audio"     && <AudioScreen     dev={dev}/>}
+
+      <nav style={{ position:"fixed", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:430, background:C.card, borderTop:`1px solid ${C.border}`, display:"flex", zIndex:100 }}>
+        {nav.map(({ id, label, ico }) => {
+          const active = tab === id;
+          return (
+            <button key={id} onClick={() => setTab(id)}
+              style={{ flex:1, border:"none", background:"none", padding:"10px 4px", cursor:"pointer", display:"flex", flexDirection:"column", alignItems:"center", gap:3, position:"relative" }}>
+              {active && <div style={{ position:"absolute", top:0, left:"50%", transform:"translateX(-50%)", width:24, height:2, background:C.accent, borderRadius:"0 0 3px 3px" }}/>}
+              <I n={ico} s={20} c={active?C.accent:C.muted}/>
+              <span style={{ fontSize:10, fontWeight:active?600:400, letterSpacing:.3, fontFamily:ff(), color:active?C.accent:C.muted }}>{label}</span>
+            </button>
+          );
+        })}
+      </nav>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+</body>
+</html>
